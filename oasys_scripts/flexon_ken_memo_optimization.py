@@ -289,7 +289,10 @@ def get_surface_from_basis_and_coefficients(basis,coefficients= \
          -5.08842152e-09, -6.38382702e-10, -5.57004604e-09, -2.95162052e-09,],
                                             ):
     out = 0
-    for i in range(len(coefficients)):
+    if isinstance(coefficients,list):
+        coefficients = numpy.array(coefficients)
+
+    for i in range(coefficients.size):
         out += coefficients[i] * basis[:,i]
     return out
 
