@@ -1,7 +1,8 @@
 import numpy
+import os
 
-input_array = numpy.loadtxt("aps_axo_influence_functions2019.dat")
-basis = numpy.loadtxt("aps_axo_orthonormal_functions2019.dat")
+# input_array = numpy.loadtxt("https://raw.githubusercontent.com/EricRoberts714/ML_Optics/master/oasys_scripts/aps_axo_influence_functions2019.dat")
+# basis = numpy.loadtxt("https://raw.githubusercontent.com/EricRoberts714/ML_Optics/master/oasys_scripts/aps_axo_orthonormal_functions2019.dat")
 
 def calculate_wavefront1D(wavelength=1e-10,
                           undulator_length=1.0, undulator_distance=10.0,
@@ -113,7 +114,8 @@ def calculate_output_wavefront_after_corrector1D(input_wavefront, grazing_angle=
 
 
 def run_whole_beamline(error_file_M1="/home/manuel/Oasys/dabam_profile_140327232022424.dat",
-                       correction_file_M3="/home/manuel/Oasys/dabam_profile_140522663056440.dat"):
+                       correction_file_M3=None,
+                       calculate_correction=True):
     #
     # source
     #
@@ -209,37 +211,35 @@ def run_whole_beamline(error_file_M1="/home/manuel/Oasys/dabam_profile_140327232
                                                                                                  error_file="",
                                                                                                  write_profile=0)
 
-    # #
-    # # M3 corrector (not needed)
-    # #
     #
-    # input_wavefront = output_wavefront
+    # M3 corrector (not needed)
     #
-    #
-    # output_wavefront, target_wavefront, abscissas_on_mirror, height = calculate_output_wavefront_after_corrector1D(
-    #     input_wavefront, grazing_angle=0.02181, focus_at=2.64, apodization=0, apodization_ratio=6.0,
-    #     write_correction_profile=1)
-    #
-    #
+
+    if calculate_correction:
+        input_wavefront = output_wavefront
+
+
+        output_wavefront, target_wavefront, abscissas_on_mirror, height = calculate_output_wavefront_after_corrector1D(
+            input_wavefront, grazing_angle=0.02181, focus_at=2.64, apodization=0, apodization_ratio=6.0,
+            write_correction_profile=1)
+
+
     # from srxraylib.plot.gol import plot
     # plot(output_wavefront.get_abscissas(),output_wavefront.get_intensity())
 
 
-    #
-    # M3 corrector from external file
-    #
+    if correction_file_M3 is not None:
+        #
+        # M3 corrector from external file
+        #
 
-
-
-
-
-    input_wavefront = output_wavefront
-    output_wavefront, abscissas_on_mirror, height = calculate_output_wavefront_after_reflector1D(input_wavefront,
-                                                                                                 radius=100000000.0,
-                                                                                                 grazing_angle=0.02181,
-                                                                                                 error_flag=1,
-                                                                                                 error_file=correction_file_M3,
-                                                                                                 write_profile=0)
+        input_wavefront = output_wavefront
+        output_wavefront, abscissas_on_mirror, height = calculate_output_wavefront_after_reflector1D(input_wavefront,
+                                                                                                     radius=100000000.0,
+                                                                                                     grazing_angle=0.02181,
+                                                                                                     error_flag=1,
+                                                                                                     error_file=correction_file_M3,
+                                                                                                     write_profile=0)
 
     #
     # propagation to sample
@@ -284,125 +284,40 @@ def run_whole_beamline(error_file_M1="/home/manuel/Oasys/dabam_profile_140327232
     return output_wavefront
 
 
-def get_surface_from_basis_and_coefficients(basis, coefficients=None, orthonormal_set=True ):
-
-    if coefficients is None:
-        coefficients = [0.0]*20
-
-    out = 0
-    if isinstance(coefficients,list):
-        coefficients = numpy.array(coefficients)
-
-    out += coefficients[0] * basis[:, 0] # constant
-    out += coefficients[1] * basis[:, 1]  # linear
-    if orthonormal_set:
-        for i in range(18):
-            out += coefficients[i + 2] * basis[:, i]
-    else:
-        for i in range(18):
-            out += coefficients[i + 2] * input_array[:, i]
-
-    return out
-
 if __name__ == "__main__":
 
-
-
-
     from srxraylib.plot.gol import plot, plot_table
-
-
-    #
-    # run using the perfect correction profile
-    #
-
-    output_wavefront00 = run_whole_beamline(error_file_M1="deformation.dat",
-                       correction_file_M3="correction.dat")
-
-    # plot(output_wavefront00.get_abscissas(), output_wavefront00.get_intensity(),title="prefectly corrected")
-
-    #
-    # run using zero correction
-    #
-
-
-    x = numpy.linspace(-0.135,0.135,100)
-    height = x * 0
-
-    f = open("tmp.dat",'w')
-    for i in range(x.size):
-        f.write("%g %g \n"%(x[i],height[i]))
-    f.close()
-
-
-    output_wavefront = run_whole_beamline(error_file_M1="deformation.dat",
-                       correction_file_M3="tmp.dat")
-
-    plot(output_wavefront00.get_abscissas(), output_wavefront00.get_intensity(),
-        output_wavefront.get_abscissas(), output_wavefront.get_intensity(),
-         legend=["perfectly corrected","correction file tmp.dat: zero correction"])
-
-
-
-    #
-    # run a correction from coefficients
-    #
-
-    # loads file with data to fit
-    # input_array = numpy.loadtxt("aps_axo_influence_functions2019.dat")
-    # basis = numpy.loadtxt("aps_axo_orthonormal_functions2019.dat")
-
-    abscissas = input_array[:, 0].copy()
-    # plot_table(abscissas,(input_array[:,1:]).T,title="Influence functions")
-    # plot_table(abscissas, basis.T, title="Orthonormal bases")
-    # plot_table(abscissas, (basis[:,0:2]).T, title="Orthonormal shifts")
-
-    print(input_array.shape,basis.shape)
-    # plot_table(abscissas, input_array.T)
-
-    #
-    print(">>>>basis",basis.shape)
-    coefficients = [-1.34111718e-08, 2.89091778e-11, 4.55787593e-07, 3.71667246e-08, \
-     1.03623232e-07, 3.30400686e-08, -3.41480067e-09, 5.67368681e-10, \
-     -1.08934818e-08, -1.67860465e-08, -9.94266810e-09, -1.41912905e-08, \
-     -1.32628413e-08, -1.36259836e-08, -9.41153403e-09, -9.47141468e-09, \
-     -5.08842152e-09, -6.38382702e-10, -5.57004604e-09, -2.95162052e-09, ]
-
     import matplotlib.pylab as plt
-    plt.bar(numpy.arange(20), numpy.array(coefficients))
-    plt.title("Coeff OK")
-    plt.show()
-
-    # coefficients = numpy.random.random(20) * 1e-9
-    height0 = get_surface_from_basis_and_coefficients(basis, coefficients)
-    # height0 = get_surface_from_influence_functions_and_coefficients(basis, numpy.zeros_like(coefficients))
 
 
-    # abscissas for the mirror
-    x = numpy.linspace(-0.135,0.135,100)
-    height = numpy.interp(x,abscissas/1000,height0)
-    print(x)
-    #
-    plot(abscissas/1000,height0,
-         x,height*1.0,
-         legend=["evaluated from coeffcients","interpolated to the mirror coordinates"])
-    # plot(abscissas/1000, height0)
-    # plot(x, height)
+    for entry_number in range(1,83):
+        error_file_M1 = "deformation%02d.dat" % entry_number
+        # make correction
+        output_wavefront_zero = run_whole_beamline(error_file_M1=error_file_M1,
+                           correction_file_M3=None, calculate_correction=False)
 
-    f = open("tmp.dat",'w')
-    for i in range(x.size):
-        f.write("%g %g \n"%(x[i],height[i]))
-    f.close()
+        output_wavefront_ideal = run_whole_beamline(error_file_M1=error_file_M1,
+                           correction_file_M3=None, calculate_correction=True)
 
+        output_wavefront_file = run_whole_beamline(error_file_M1=error_file_M1,
+                           correction_file_M3="correction_profile1D.dat", calculate_correction=False)
 
-    output_wavefront = run_whole_beamline(error_file_M1="deformation.dat",
-                       correction_file_M3="tmp.dat")
+        try:
+            os.remove("correction%02d.dat"%entry_number)
+        except:
+            pass
+        os.rename("correction_profile1D.dat","correction%02d.dat"%entry_number)
+        # plot(output_wavefront_ideal.get_abscissas(), output_wavefront_ideal.get_intensity(),
+        #      output_wavefront_zero.get_abscissas(), output_wavefront_zero.get_intensity(),
+        #      output_wavefront_file.get_abscissas(), output_wavefront_file.get_intensity(),
+        #      legend=["perfectly corrected (calculated)","zero correction","perfectly corrected (from file)"])
 
-    plot(output_wavefront00.get_abscissas(), output_wavefront00.get_intensity(),
-         output_wavefront.get_abscissas(), output_wavefront.get_intensity(),
-         legend=["perfectly corrected","correction file tmp.dat: from coefficients"])
+        plot(output_wavefront_zero.get_abscissas(), output_wavefront_zero.get_intensity(),
+             output_wavefront_file.get_abscissas(), output_wavefront_file.get_intensity(),
+             legend=["zero correction","perfectly corrected (from file)"],
+             title=error_file_M1,
+             show=0)
 
+        plt.savefig(os.path.splitext(error_file_M1)[0]+".png")
 
-
-
-
+        # plt.show()
