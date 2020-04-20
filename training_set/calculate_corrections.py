@@ -302,6 +302,18 @@ if __name__ == "__main__":
         output_wavefront_file = run_whole_beamline(error_file_M1=error_file_M1,
                            correction_file_M3="correction_profile1D.dat", calculate_correction=False)
 
+        # interpolate to reduce the number of points to 200
+        b = numpy.loadtxt("correction_profile1D.dat")
+        #
+        # plot(a[:,0],a[:,1],
+        #      b[:,0],b[:,1])
+        x = numpy.linspace(b[0, 0], b[-1, 0], 200)
+        y = numpy.interp(x, b[:, 0], b[:, 1], )
+        f = open("correction_profile1D.dat", 'w')
+        for i in range(x.size):
+            f.write("%g  %g\n" % (x[i], y[i]))
+        f.close()
+
         try:
             os.remove("correction%02d.dat"%entry_number)
         except:
